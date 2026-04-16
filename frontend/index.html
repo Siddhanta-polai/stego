@@ -1,0 +1,536 @@
+
+---
+
+## 🌐 Frontend Code
+
+### `frontend/index.html`
+
+This is a standalone HTML file that communicates with the backend API. It uses the `API_BASE` variable – change it to your backend URL (local or deployed).
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Adaptive Pixel Steganography</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * { transition: all 0.2s ease; }
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        .glass-modern {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+        }
+        .dark .glass-modern {
+            background: rgba(15, 25, 35, 0.7);
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #1e40af);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px -8px rgba(59,130,246,0.4);
+        }
+        .dropzone.drag-over {
+            background: rgba(59, 130, 246, 0.1);
+            border-color: #3b82f6;
+        }
+        .loading-spinner {
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top: 2px solid white;
+            width: 20px;
+            height: 20px;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .image-zoom:hover { transform: scale(1.02); }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-100 to-blue-100 dark:from-slate-900 dark:to-slate-800 text-slate-800 dark:text-slate-200">
+<div class="max-w-7xl mx-auto px-4 py-6 md:py-10">
+    <div class="flex justify-between items-center mb-8 flex-wrap gap-4">
+        <div>
+            <h1 class="text-3xl md:text-4xl font-black tracking-tight bg-gradient-to-r from-blue-700 to-indigo-600 bg-clip-text text-transparent dark:from-blue-400 dark:to-indigo-300">
+                Adaptive Pixel Steganography
+            </h1>
+            <p class="text-slate-500 dark:text-slate-400 text-sm md:text-base">with Edge Preservation for Secure Image Communication</p>
+        </div>
+        <button id="themeToggle" class="p-3 rounded-full glass-modern shadow-md text-xl hover:scale-105">
+            <i class="fas fa-moon dark:hidden"></i>
+            <i class="fas fa-sun hidden dark:inline"></i>
+        </button>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <!-- LEFT PANEL -->
+        <div class="lg:col-span-5 space-y-6">
+            <div class="glass-modern rounded-3xl p-6 shadow-xl">
+                <h2 class="text-2xl font-bold flex items-center gap-2 mb-5">
+                    <i class="fas fa-lock-open text-blue-500"></i>
+                    <span class="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Embedding Engine</span>
+                </h2>
+                <div id="dropzone" class="dropzone border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-2xl p-6 text-center cursor-pointer hover:border-blue-400 transition mb-4">
+                    <input type="file" id="coverInput" class="hidden" accept="image/*">
+                    <i class="fas fa-cloud-upload-alt text-4xl text-blue-500 mb-2"></i>
+                    <p class="text-sm font-medium">Click or drag & drop cover image</p>
+                    <p id="fileName" class="text-xs text-slate-400 mt-1">No file selected</p>
+                </div>
+                <textarea id="msg" class="w-full p-4 bg-white/50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-blue-400 mb-4 text-sm" rows="3" placeholder="🔒 Secret message..."></textarea>
+                <div class="flex justify-between text-xs text-slate-400 mb-2">
+                    <span><i class="fas fa-database"></i> Message size: <span id="msgSize">0</span> bytes</span>
+                    <span><i class="fas fa-microchip"></i> Est. capacity: <span id="capacityEstimate">—</span> bits</span>
+                </div>
+                <input type="password" id="key" class="w-full p-4 bg-white/50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-blue-400 mb-5" placeholder="🔑 Security key">
+                <button id="embedBtn" class="btn-primary w-full text-white font-bold py-4 rounded-xl shadow-lg transition flex items-center justify-center gap-2">
+                    <i class="fas fa-chart-line"></i> Run Analytics & Embed
+                </button>
+                <div id="downloadSection" class="hidden mt-6 p-5 bg-emerald-50/80 dark:bg-emerald-900/30 backdrop-blur-sm rounded-xl border border-emerald-200 dark:border-emerald-800">
+                    <div class="flex items-center justify-between mb-3">
+                        <p class="text-emerald-700 dark:text-emerald-300 font-bold text-sm flex items-center gap-2">
+                            <i class="fas fa-check-circle"></i> Stego image ready
+                        </p>
+                        <span id="stegoFileSize" class="text-xs text-slate-500 dark:text-slate-400 bg-white/50 px-2 py-0.5 rounded-full"></span>
+                    </div>
+                    <div class="relative group mb-4">
+                        <img id="stegoPreview" class="rounded-xl border border-slate-200 dark:border-slate-700 max-h-48 mx-auto shadow-sm image-zoom" alt="Stego preview">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600 dark:text-slate-300 block mb-1">Format</label>
+                            <select id="downloadFormat" class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm">
+                                <option value="image/png">PNG (lossless)</option>
+                                <option value="image/jpeg">JPEG (lossy)</option>
+                                <option value="image/webp">WebP (lossy)</option>
+                            </select>
+                        </div>
+                        <div id="qualityControl" class="hidden">
+                            <label class="text-xs font-semibold text-slate-600 dark:text-slate-300 block mb-1">Quality</label>
+                            <input type="range" id="jpegQuality" min="0.1" max="1" step="0.01" value="0.92" class="w-full">
+                            <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+                                <span>Smaller</span><span id="qualityValue">92%</span><span>Better</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2 mb-3">
+                        <input type="text" id="downloadFilename" placeholder="filename" value="stego_image" class="flex-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm">
+                        <button id="downloadBtnEnhanced" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2 rounded-lg transition flex items-center justify-center gap-2 shadow-md">
+                            <i class="fas fa-download"></i> Save
+                        </button>
+                    </div>
+                    <div class="flex justify-between text-xs text-slate-500 dark:text-slate-400 border-t border-emerald-200 dark:border-emerald-800 pt-3 mt-1">
+                        <button id="copyImageBtn" class="hover:text-blue-600 transition"><i class="far fa-copy"></i> Copy to clipboard</button>
+                        <span><i class="far fa-save"></i> Ctrl+S to save</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-modern rounded-3xl p-6 shadow-xl">
+                <h2 class="text-2xl font-bold flex items-center gap-2 mb-5">
+                    <i class="fas fa-key text-purple-500"></i>
+                    <span class="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Extraction</span>
+                </h2>
+                <input type="file" id="stegoFile" class="w-full text-sm mb-4 bg-white/50 dark:bg-slate-800/50 rounded-xl border p-2" accept="image/png,image/jpeg,image/webp">
+                <input type="password" id="extKey" class="w-full p-4 bg-white/50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-purple-400 mb-5" placeholder="🔑 Security key">
+                <button id="revealBtn" class="w-full bg-slate-700 hover:bg-slate-800 text-white font-bold py-4 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                    <i class="fas fa-unlock-alt"></i> Reveal Hidden Message
+                </button>
+                <div id="revealBox" class="hidden mt-4 p-4 bg-blue-100/70 dark:bg-blue-900/40 rounded-xl font-mono text-sm break-all"></div>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL Dashboard -->
+        <div class="lg:col-span-7">
+            <div id="placeholder" class="glass-modern rounded-3xl p-12 text-center flex flex-col items-center justify-center min-h-[400px]">
+                <i class="fas fa-chart-pie text-6xl text-slate-300 dark:text-slate-600 mb-4"></i>
+                <p class="text-xl font-medium text-slate-400">Dashboard idle</p>
+                <p class="text-sm text-slate-400">Embed a secret to see real‑time metrics & comparison</p>
+            </div>
+            <div id="dashboard" class="hidden space-y-6">
+                <div class="glass-modern rounded-3xl p-5 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20">
+                    <div class="flex items-start gap-4">
+                        <div class="text-4xl">🏆</div>
+                        <div>
+                            <h3 class="font-bold text-lg text-amber-800 dark:text-amber-300">Recommended Algorithm</h3>
+                            <p id="recommendationText" class="text-sm text-slate-600 dark:text-slate-300 mt-1"></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="glass-modern rounded-3xl p-6 shadow-xl overflow-x-auto">
+                    <h2 class="text-xl font-bold flex items-center gap-2 mb-4">
+                        <i class="fas fa-trophy text-yellow-500"></i>
+                        <span>Algorithm Leaderboard</span>
+                    </h2>
+                    <table class="w-full text-sm min-w-[800px]">
+                        <thead class="text-xs uppercase text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                            <tr><th>Rank</th><th>Method</th><th>PSNR ↑</th><th>SNR ↑</th><th>MSE ↓</th><th>FDM ↓</th><th>Capacity (bpp)</th></tr>
+                        </thead>
+                        <tbody id="leaderboardBody"></tbody>
+                    </table>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="glass-modern rounded-3xl p-5"><canvas id="radarChart" height="250"></canvas></div>
+                    <div class="glass-modern rounded-3xl p-5 flex flex-col">
+                        <div class="text-center mb-4"><p class="text-sm uppercase tracking-wider text-slate-400 font-semibold">KRISHNA (Adaptive Pixel) Metrics</p></div>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div class="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20"><span class="font-semibold">PSNR:</span> <span id="dispPsnr">—</span> dB</div>
+                            <div class="p-3 rounded-xl bg-green-50 dark:bg-green-900/20"><span class="font-semibold">SNR:</span> <span id="dispSnr">—</span> dB</div>
+                            <div class="p-3 rounded-xl bg-red-50 dark:bg-red-900/20"><span class="font-semibold">MSE:</span> <span id="dispMse">—</span></div>
+                            <div class="p-3 rounded-xl bg-purple-50 dark:bg-purple-900/20"><span class="font-semibold">FDM:</span> <span id="dispFdm">—</span></div>
+                            <div class="col-span-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20"><span class="font-semibold">Capacity:</span> <span id="dispCap">—</span> bpp</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="toastContainer" class="fixed bottom-5 right-5 z-50"></div>
+
+<script>
+    // ===== CONFIGURE YOUR BACKEND URL HERE =====
+    const API_BASE = "http://localhost:8002";  // Change to your deployed backend URL
+    // ==========================================
+
+    const themeToggle = document.getElementById('themeToggle');
+    const dropzone = document.getElementById('dropzone');
+    const coverInput = document.getElementById('coverInput');
+    const fileNameSpan = document.getElementById('fileName');
+    const msgTextarea = document.getElementById('msg');
+    const msgSizeSpan = document.getElementById('msgSize');
+    const capacitySpan = document.getElementById('capacityEstimate');
+    const embedBtn = document.getElementById('embedBtn');
+    const stegoFileInput = document.getElementById('stegoFile');
+    const extKeyInput = document.getElementById('extKey');
+    const revealBtn = document.getElementById('revealBtn');
+    const revealBox = document.getElementById('revealBox');
+    const placeholder = document.getElementById('placeholder');
+    const dashboard = document.getElementById('dashboard');
+    const dispPsnr = document.getElementById('dispPsnr');
+    const dispSnr = document.getElementById('dispSnr');
+    const dispMse = document.getElementById('dispMse');
+    const dispFdm = document.getElementById('dispFdm');
+    const dispCap = document.getElementById('dispCap');
+    const toastContainer = document.getElementById('toastContainer');
+
+    let radarChart = null;
+    let selectedCoverFile = null;
+    let currentStegoFileId = null;
+    let currentStegoBlobUrl = null;
+
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `toast glass-modern rounded-xl px-5 py-3 shadow-lg flex items-center gap-3 ${type === 'error' ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`;
+        toast.innerHTML = `<i class="fas ${type === 'error' ? 'fa-exclamation-circle' : 'fa-check-circle'}"></i><span>${message}</span>`;
+        toastContainer.appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+    }
+
+    // Dark mode
+    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+    }
+    themeToggle.addEventListener('click', () => {
+        document.documentElement.classList.toggle('dark');
+        localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+    });
+
+    dropzone.addEventListener('click', () => coverInput.click());
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+    dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) handleCoverFile(file);
+        else showToast('Please drop a valid image file.', 'error');
+    });
+    coverInput.addEventListener('change', (e) => { if (e.target.files[0]) handleCoverFile(e.target.files[0]); });
+
+    async function handleCoverFile(file) {
+        selectedCoverFile = file;
+        fileNameSpan.innerText = file.name;
+        const fd = new FormData();
+        fd.append('image', file);
+        try {
+            const res = await fetch(`${API_BASE}/api/capacity`, { method: 'POST', body: fd });
+            const data = await res.json();
+            capacitySpan.innerText = `${data.capacity_bits} bits (${Math.floor(data.capacity_bits/8)} bytes)`;
+        } catch(e) {
+            capacitySpan.innerText = 'Unable to estimate';
+        }
+        showToast(`Cover image loaded: ${file.name}`);
+    }
+
+    function updateMsgSize() {
+        const bytes = new TextEncoder().encode(msgTextarea.value).length;
+        msgSizeSpan.innerText = bytes;
+    }
+    msgTextarea.addEventListener('input', updateMsgSize);
+    updateMsgSize();
+
+    embedBtn.addEventListener('click', async () => {
+        if (!selectedCoverFile) return showToast('Please select a cover image.', 'error');
+        const message = msgTextarea.value;
+        const password = document.getElementById('key').value;
+        if (!message || !password) return showToast('Message and key required.', 'error');
+
+        embedBtn.disabled = true;
+        embedBtn.innerHTML = '<div class="loading-spinner"></div> Processing...';
+
+        const fd = new FormData();
+        fd.append('image', selectedCoverFile);
+        fd.append('message', message);
+        fd.append('password', password);
+        try {
+            const res = await fetch(`${API_BASE}/api/hide`, { method: 'POST', body: fd });
+            const { task_id } = await res.json();
+            if (!task_id) throw new Error('No task_id returned');
+
+            let result = null;
+            while (!result) {
+                const pollRes = await fetch(`${API_BASE}/api/result/${task_id}`);
+                const data = await pollRes.json();
+                if (data.pending === true) {
+                    await new Promise(r => setTimeout(r, 2000));
+                    continue;
+                }
+                result = data;
+                break;
+            }
+            if (!result.success) throw new Error(result.error);
+
+            placeholder.classList.add('hidden');
+            dashboard.classList.remove('hidden');
+
+            const m = result.metrics;
+            dispPsnr.innerText = m.psnr;
+            dispSnr.innerText = m.snr;
+            dispMse.innerText = m.mse;
+            dispFdm.innerText = m.fdm;
+            dispCap.innerText = m.capacity_bpp;
+
+            renderLeaderboard(result.leaderboard);
+            renderRadar(result.leaderboard);
+            document.getElementById('recommendationText').innerHTML = result.recommendation;
+
+            currentStegoFileId = result.stego_file_id;
+            const previewUrl = `${API_BASE}/api/image/${currentStegoFileId}`;
+            if (currentStegoBlobUrl) URL.revokeObjectURL(currentStegoBlobUrl);
+            const blobRes = await fetch(previewUrl);
+            const blob = await blobRes.blob();
+            currentStegoBlobUrl = URL.createObjectURL(blob);
+            document.getElementById('stegoPreview').src = currentStegoBlobUrl;
+            document.getElementById('downloadFilename').value = `stego_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}`;
+            document.getElementById('downloadSection').classList.remove('hidden');
+            updateEstimatedFileSize();
+
+            showToast('Embedding successful!');
+        } catch(err) {
+            showToast('Error: ' + err.message, 'error');
+        } finally {
+            embedBtn.disabled = false;
+            embedBtn.innerHTML = '<i class="fas fa-chart-line"></i> Run Analytics & Embed';
+        }
+    });
+
+    revealBtn.addEventListener('click', async () => {
+        const file = stegoFileInput.files[0];
+        const key = extKeyInput.value;
+        if (!file || !key) return showToast('Please select a stego image and enter the key.', 'error');
+
+        revealBtn.innerHTML = '<div class="loading-spinner"></div> Decrypting...';
+        const fd = new FormData();
+        fd.append('image', file);
+        fd.append('password', key);
+        try {
+            const res = await fetch(`${API_BASE}/api/reveal`, { method: 'POST', body: fd });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.detail);
+            revealBox.classList.remove('hidden');
+            revealBox.innerHTML = `<i class="fas fa-envelope-open-text mr-2"></i> ${escapeHtml(data.message)}`;
+            showToast('Message extracted successfully!');
+        } catch(err) {
+            showToast('Extraction failed: ' + err.message, 'error');
+            revealBox.classList.add('hidden');
+        } finally {
+            revealBtn.innerHTML = '<i class="fas fa-unlock-alt"></i> Reveal Hidden Message';
+        }
+    });
+
+    function escapeHtml(str) {
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    function renderLeaderboard(list) {
+        const tbody = document.getElementById('leaderboardBody');
+        tbody.innerHTML = list.map(entry => `
+            <tr class="${entry.is_ours ? 'bg-blue-50 dark:bg-blue-900/20 font-medium' : ''}">
+                <td class="py-2">${entry.rank === 1 ? '🏆' : entry.rank}</td>
+                <td class="py-2">${entry.name} ${entry.is_ours ? '<span class="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded-full ml-1">OURS</span>' : ''}</td>
+                <td class="py-2">${entry.psnr ?? '—'}</td>
+                <td class="py-2">${entry.snr ?? '—'}</td>
+                <td class="py-2">${entry.mse ?? '—'}</td>
+                <td class="py-2">${entry.fdm ?? '—'}</td>
+                <td class="py-2">${entry.capacity_bpp ?? '—'}</td>
+            </tr>
+        `).join('');
+    }
+
+    function renderRadar(list) {
+        const ctx = document.getElementById('radarChart').getContext('2d');
+        if (radarChart) radarChart.destroy();
+        const maxPSNR = 60, maxSNR = 50, maxMSE = 10, maxFDM = 10, maxCapacity = 0.3;
+        const datasets = list.map(m => ({
+            label: m.name.length > 15 ? m.name.slice(0,12)+'..' : m.name,
+            data: [
+                Math.min((m.psnr || 0) / maxPSNR, 1),
+                Math.min((m.snr || 0) / maxSNR, 1),
+                Math.max(1 - Math.min((m.mse || 0) / maxMSE, 1), 0),
+                Math.max(1 - Math.min((m.fdm || 0) / maxFDM, 1), 0),
+                Math.min((m.capacity_bpp || 0) / maxCapacity, 1)
+            ],
+            borderColor: m.is_ours ? '#3b82f6' : '#94a3b8',
+            backgroundColor: m.is_ours ? 'rgba(59,130,246,0.2)' : 'rgba(148,163,184,0.1)',
+            pointRadius: 4,
+            tension: 0.1
+        }));
+        radarChart = new Chart(ctx, {
+            type: 'radar',
+            data: { labels: ['PSNR', 'SNR', '1-MSE', '1-FDM', 'Capacity'], datasets: datasets },
+            options: { responsive: true, maintainAspectRatio: true, scales: { r: { min: 0, max: 1, ticks: { stepSize: 0.2 } } }, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } } }
+        });
+    }
+
+    const downloadFormatSelect = document.getElementById('downloadFormat');
+    const qualityControlDiv = document.getElementById('qualityControl');
+    const qualitySlider = document.getElementById('jpegQuality');
+    const qualityValueSpan = document.getElementById('qualityValue');
+    const downloadFilenameInput = document.getElementById('downloadFilename');
+    const downloadBtnEnhanced = document.getElementById('downloadBtnEnhanced');
+    const copyImageBtn = document.getElementById('copyImageBtn');
+    const stegoFileSizeSpan = document.getElementById('stegoFileSize');
+    const stegoPreview = document.getElementById('stegoPreview');
+
+    downloadFormatSelect.addEventListener('change', function() {
+        const format = this.value;
+        qualityControlDiv.classList.toggle('hidden', !(format === 'image/jpeg' || format === 'image/webp'));
+        updateEstimatedFileSize();
+    });
+    qualitySlider.addEventListener('input', function() {
+        qualityValueSpan.innerText = Math.round(this.value * 100) + '%';
+        updateEstimatedFileSize();
+    });
+
+    async function convertImageBlob(blobUrl, mimeType, quality = 0.92) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = "Anonymous";
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                canvas.getContext('2d').drawImage(img, 0, 0);
+                canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Conversion failed')), mimeType, quality);
+            };
+            img.onerror = reject;
+            img.src = blobUrl;
+        });
+    }
+
+    async function updateEstimatedFileSize() {
+        if (!currentStegoBlobUrl) return;
+        try {
+            const format = downloadFormatSelect.value;
+            const quality = parseFloat(qualitySlider.value);
+            const blob = await convertImageBlob(currentStegoBlobUrl, format, quality);
+            const sizeKB = (blob.size / 1024).toFixed(1);
+            stegoFileSizeSpan.innerText = `${sizeKB} KB (${format.split('/')[1]})`;
+        } catch(e) { console.warn(e); }
+    }
+
+    downloadBtnEnhanced.addEventListener('click', async () => {
+        if (!currentStegoBlobUrl) return;
+        const format = downloadFormatSelect.value;
+        const quality = parseFloat(qualitySlider.value);
+        const baseName = downloadFilenameInput.value.trim() || 'stego_image';
+        let ext = 'png';
+        if (format === 'image/jpeg') ext = 'jpg';
+        else if (format === 'image/webp') ext = 'webp';
+        const fileName = `${baseName}.${ext}`;
+        downloadBtnEnhanced.innerHTML = '<div class="loading-spinner"></div> Encoding...';
+        downloadBtnEnhanced.disabled = true;
+        try {
+            const blob = await convertImageBlob(currentStegoBlobUrl, format, quality);
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.href = url;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            stegoFileSizeSpan.innerText = `${(blob.size/1024).toFixed(1)} KB (${ext.toUpperCase()})`;
+            showToast('Image saved successfully!');
+        } catch(err) {
+            showToast('Conversion failed: ' + err.message, 'error');
+        } finally {
+            downloadBtnEnhanced.innerHTML = '<i class="fas fa-download"></i> Save';
+            downloadBtnEnhanced.disabled = false;
+        }
+    });
+
+    copyImageBtn.addEventListener('click', async () => {
+        if (!currentStegoBlobUrl) return;
+        const format = downloadFormatSelect.value;
+        const quality = parseFloat(qualitySlider.value);
+        try {
+            const blob = await convertImageBlob(currentStegoBlobUrl, format, quality);
+            await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+            showToast('Image copied to clipboard!');
+        } catch(err) {
+            showToast('Copy failed: ' + err.message, 'error');
+        }
+    });
+
+    stegoPreview.addEventListener('click', () => {
+        if (currentStegoBlobUrl) window.open(currentStegoBlobUrl);
+    });
+
+    window.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 's' && currentStegoBlobUrl) {
+            e.preventDefault();
+            downloadBtnEnhanced.click();
+        }
+    });
+</script>
+</body>
+</html>
