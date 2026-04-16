@@ -15,7 +15,6 @@ from evaluator import StegoEvaluator
 from existing_models import MSBModel, DCTJStegModel, DWTHaarModel
 from ranking import AlgorithmRanker
 
-# ---------- Configuration from Environment ----------
 MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
 MAX_IMAGE_SIZE_MB = int(os.getenv("MAX_IMAGE_SIZE_MB", "10"))
@@ -26,15 +25,11 @@ HEADER_SIZE = 72
 THRESHOLD_FIXED = 50
 BLUR = np.array([[1,2,1],[2,4,2],[1,2,1]], dtype=np.float32) / 16
 
-# ---------- MongoDB ----------
 client = MongoClient(MONGODB_URI)
 db = client.steganography_db
 fs = GridFS(db)
-
-# ---------- Task storage (in‑memory; for production use Redis) ----------
 task_results = {}
 
-# ---------- StegoSystem ----------
 class StegoSystem:
     def _edge_mask_dynamic(self, img):
         green = img[:,:,1] & 0xFE
@@ -101,7 +96,6 @@ class StegoSystem:
 
 stego_sys = StegoSystem()
 
-# ---------- Encryption helpers ----------
 def encrypt_message(message: bytes, password: str) -> bytes:
     key = hashlib.sha256(password.encode()).digest()
     nonce = os.urandom(12)
@@ -116,14 +110,12 @@ def decrypt_message(encrypted: bytes, password: str) -> bytes:
     cipher = AESGCM(key)
     return cipher.decrypt(nonce, ciphertext, None)
 
-# ---------- Helper: save image to GridFS ----------
 def save_image_to_gridfs(image_array, filename):
     img_bytes = io.BytesIO()
     Image.fromarray(image_array).save(img_bytes, format='PNG')
     img_bytes.seek(0)
     return str(fs.put(img_bytes, filename=filename))
 
-# ---------- Background embedding task ----------
 def process_embedding(task_id: str, cover_arr: np.ndarray, password: str, plain_message: str):
     try:
         encrypted = encrypt_message(plain_message.encode(), password)
@@ -175,24 +167,17 @@ def process_embedding(task_id: str, cover_arr: np.ndarray, password: str, plain_
     except Exception as e:
         task_results[task_id] = {"success": False, "error": str(e)}
 
-# ---------- FastAPI app ----------
-app = FastAPI(title="Adaptive Pixel Steganography API")
+app = FastAPI(title="Adaptive Pixel Steganography")
+app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-# CORS middleware – allow frontend origin(s)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# ---------- Root route (added) ----------
+@app.get("/")
+async def root():
+    return {"message": "Steganography API is running", "docs": "/docs"}
 
 # ---------- API Endpoints ----------
 @app.post("/api/hide")
-async def hide(background_tasks: BackgroundTasks,
-               image: UploadFile = File(...),
-               password: str = Form(...),
-               message: str = Form(...)):
+async def hide(background_tasks: BackgroundTasks, image: UploadFile = File(...), password: str = Form(...), message: str = Form(...)):
     contents = await image.read()
     if len(contents) > MAX_IMAGE_SIZE_MB * 1024 * 1024:
         raise HTTPException(400, f"Image exceeds {MAX_IMAGE_SIZE_MB} MB")
